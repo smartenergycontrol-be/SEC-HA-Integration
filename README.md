@@ -5,15 +5,7 @@ Custom component for Home Assistant to calculate hourly prices for all Belgian e
 
 
 ### Sensors
-The integration adds the following sensors:
-- Average Day-Ahead Electricity Price Today (This integration carries attributes with all prices)
-- Highest Day-Ahead Electricity Price Today
-- Lowest Day-Ahead Electricity Price Today
-- Current Day-Ahead Electricity Price
-- Current Percentage Relative To Highest Electricity Price Of The Day
-- Next Hour Day-Ahead Electricity Price
-- Time Of Highest Energy Price Today
-- Time Of Lowest Energy Price Today
+cunsuption and injections prices for all contracts in the datasource. Hourly today and hourly next day when available trought the entso-e intgration. Also a sensor that holds all distributor and government parameters for electricty price calculation.
   
 ------
 ## Installation
