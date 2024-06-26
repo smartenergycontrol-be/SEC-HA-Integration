@@ -1,6 +1,6 @@
 """Constants for the Leveranciers integration."""
 
-DOMAIN = "leveranciers"
+DOMAIN = "smartenergycontrol"
 
 ENTSOE_API_KEY = ""
 ENTSOE_REGION = "BE"

@@ -10,6 +10,7 @@ cunsuption and injections prices for all contracts in the datasource. Hourly tod
 ------
 ## Installation
 
+
 ### Manual
 Download this repository and place the contents of `custom_components` in your own `custom_components` map of your Home Assistant installation. Restart Home Assistant and add the integration through your settings. 
 
