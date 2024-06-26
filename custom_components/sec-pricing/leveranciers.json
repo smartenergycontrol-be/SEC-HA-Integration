@@ -114,11 +114,23 @@
         "naam": "Bolt Variabel Online (optie dynamic uit)",
         "index": 69.60,
         "meterfactor": 0.11225,
-        "balanceringskost": 1.155,
+        "balanceringskost": 0.999,
         "injectiefactor": 0.0884,
         "injectiekost": 0.5,
         "afname": "(0.11225*index+1.155)*1.06",
         "injectie": "0.0884*index-0.5",
+        "dynamisch": false
+    }
+    "eneco_zon_&_wind_flex": {
+        "yearly_cost": 61.32,
+        "naam": "Eneco Zon & Wind Flex",
+        "index": 69.60,
+        "meterfactor": 0.102,
+        "balanceringskost": 4.643,
+        "injectiefactor": 0.08,
+        "injectiekost": 2,
+        "afname": "nvt",
+        "injectie": "nvt",
         "dynamisch": false
     }
 }
