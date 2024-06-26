@@ -120,7 +120,7 @@
         "afname": "(0.11225*index+1.155)*1.06",
         "injectie": "0.0884*index-0.5",
         "dynamisch": false
-    }
+    },
     "eneco_zon_&_wind_flex": {
         "yearly_cost": 61.32,
         "naam": "Eneco Zon & Wind Flex",
