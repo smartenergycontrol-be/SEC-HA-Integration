@@ -1,0 +1,19 @@
+{
+  "domain": "smartenergycontrol",
+  "name": "smartenergycontrol - pricing",
+  "version": "0.0.2",
+  "codeowners": [
+    "@jefcrb"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://smartenergycontrol.be",
+  "homekit": {},
+  "iot_class": "calculated",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "icons": {
+    "logo": "https://smartenergycontrol.be/wp-content/uploads/2024/04/logo-150x150.webp"
+  }
+}
