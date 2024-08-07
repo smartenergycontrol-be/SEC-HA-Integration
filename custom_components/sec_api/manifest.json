@@ -1,0 +1,15 @@
+{
+  "domain": "sec_api",
+  "name": "smartenergycontrol - API",
+  "codeowners": [
+    "@jefcrb"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/sec_api",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
