@@ -13,14 +13,14 @@ from .const import DOMAIN, SENSOR_REFRESH_TIME
 _LOGGER = logging.getLogger(__name__)
 
 
-SENSOR_STORAGE_KEY = "smartenergycontrol_sensors"
+SENSOR_STORAGE_KEY = "sec_sensors"
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Set up binary sensor platform."""
-    api: MyApi = hass.data["smartenergycontrol"][entry.entry_id]
+    api: MyApi = hass.data[DOMAIN][entry.entry_id]
 
     data = entry.options
 
@@ -47,7 +47,7 @@ async def async_setup_entry(
 
     for row in existing_sensors.values():
         sensors.append(
-            SmartEnergyControlBinarySensor(hass, api, row.extra_state_attributes)
+            SmartEnergyControlBinarySensor(hass, api, entry, row.extra_state_attributes)
         )
 
     for row in data.get("prijsonderdelen", []):
@@ -55,7 +55,7 @@ async def async_setup_entry(
             " ", "_"
         )
 
-        sensor = SmartEnergyControlBinarySensor(hass, api, row)
+        sensor = SmartEnergyControlBinarySensor(hass, api, entry, row)
         if sensor.unique_id not in existing_sensors:
             existing_sensors[sensor_id] = sensor
 
@@ -67,13 +67,14 @@ async def async_setup_entry(
 class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Smart Energy Control binary sensor."""
 
-    def __init__(self, hass: HomeAssistant, api: MyApi, data):
+    def __init__(self, hass: HomeAssistant, api: MyApi, entry: ConfigEntry, data):
         """Initialize the binary sensor."""
         self._api = api
         self._hass = hass
         self._state = 0
         self._attributes = data
         self.data = data
+        self._entry = entry
 
         name_attrs = [
             "sec",
@@ -104,8 +105,7 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     async def _fetch_data(self):
         """Fetch data from the API with sensor-specific attributes."""
-        print(f"Refreshing sensor {self.name}")
-        return await self._api.fetch_data_only(
+        data = await self._api.fetch_data_only(
             f"energietype={self.data['energietype']}",
             f"vast_variabel_dynamisch={self.data['vast_variabel_dynamisch']}",
             f"segment={self.data['segment']}",
@@ -113,7 +113,13 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
             f"productnaam={self.data['productnaam']}",
             f"prijsonderdeel={self.data['prijsonderdeel']}",
             show_prices=True,
+            zip_code=self._entry.data["zip_code"],
         )
+        data = data[list(data.keys())[0]]
+        for row in data["prijsonderdelen"]:
+            if row["contracttype"] == self.extra_state_attributes["contracttype"]:
+                return row
+        return {}
 
     @property
     def unique_id(self):
@@ -135,10 +141,21 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return extra attributes."""
         return self._attributes
 
+    @property
+    def state(self):
+        "Return state."
+        return self._state
+
     @callback
     def _handle_coordinator_update(self):
         """Handle updated data from the coordinator."""
         self._attributes = self.coordinator.data
-        # Example: Update state based on fetched data (you might need to customize this)
-        self._state = self._attributes.get("some_state_attribute", 0)
+
+        self._state = self._attributes.get("prices", {}).get("current_price", 0)
         self.async_write_ha_state()
+
+    class SmartEnergyControlConstSensor:
+        "Sensor that holds const values."
+
+        def __init__(self, entry):
+            "Initialize const sensor."

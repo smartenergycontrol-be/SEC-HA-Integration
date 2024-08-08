@@ -1,6 +1,5 @@
 import aiohttp
 import logging
-from datetime import timedelta, datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ class MyApi:
 
     async def fetch_data(self, *args):
         """Fetch data from the API."""
-        print(f"Fetching {self.base_url}?{'&'.join(args)}")
+        # print(f"Fetching {self.base_url}?{'&'.join(args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(args)}",
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -57,57 +56,36 @@ class MyApi:
     async def fetch_keys(self):
         """Fetch only key names."""
         data = {}
-        i = 0
-        while len(data) == 0:
-            data = await self.fetch_data(
-                f"maand={self.get_current_month(i)}", f"jaar={self.get_current_year()}"
-            )
-            data = data.get("data", {})
-            i -= 1
+        current_times = await self.get_current_time()
+        data = await self.fetch_data(
+            f"maand={current_times["maand"]}",
+            f"jaar={current_times["jaar"]}",
+        )
+        data = data.get("data", {})
         return [x["name"] for _, x in data.items()]
 
-    async def fetch_data_only(self, *args, show_prices=False):
+    async def fetch_data_only(self, *args, show_prices=False, zip_code="2060"):
         """Fetch only data without metadata."""
         data = {}
         sp = ""
         if show_prices:
-            sp = "show_prices=yes&postcode=2060"
-        i = 0
-        while len(data) == 0 and i >= -11:
-            data = await self.fetch_data(
-                f"maand={self.get_current_month(i)}",
-                f"jaar={self.get_current_year()}",
-                *args,
-                sp,
-            )
-            data = data.get("data", {})
-            i -= 1
+            sp = f"show_prices=yes&postcode={zip_code}"
+
+        current_times = await self.get_current_time()
+        data = await self.fetch_data(
+            f"maand={current_times["maand"]}",
+            f"jaar={current_times["jaar"]}",
+            *args,
+            sp,
+        )
+        data = data.get("data", {})
         return data
 
-    def get_current_month(self, step=0):
-        """Return the current month."""
-        months = {
-            1: "jan",
-            2: "feb",
-            3: "maa",
-            4: "apr",
-            5: "mei",
-            6: "jun",
-            7: "jul",
-            8: "aug",
-            9: "sep",
-            10: "okt",
-            11: "nov",
-            12: "dec",
-        }
-
-        current_month_number = datetime.now().month
-
-        try:
-            return months[current_month_number + step]
-        except KeyError:
-            return "jul"
-
-    def get_current_year(self, step=0):
-        """Return the current year."""
-        return datetime.now().year + step
+    async def get_current_time(self):
+        "Get current year and month."
+        # print(f"Fetching {self.base_url[:-5]}/month")
+        async with self.session.get(
+            f"{self.base_url[:-5]}/month",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+        ) as response:
+            return await response.json()

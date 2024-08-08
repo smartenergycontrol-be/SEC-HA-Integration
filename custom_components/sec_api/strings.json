@@ -1,13 +1,14 @@
 {
-  "config": {
-    "step": {
-      "confirm": {
-        "description": "[%key:common::config_flow::description::confirm_setup%]"
+  "title": {
+      "user": "User Configuration"
+  },
+  "step": {
+      "user": {
+          "data": {
+              "api_key": "API Key",
+              "zip_code": "Zip Code"
+          },
+          "description": "Please enter your API key and zip code."
       }
-    },
-    "abort": {
-      "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
-      "no_devices_found": "[%key:common::config_flow::abort::no_devices_found%]"
-    }
   }
 }

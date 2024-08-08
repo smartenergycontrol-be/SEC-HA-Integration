@@ -15,14 +15,16 @@ class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Store the selected API key in the config entry
             return self.async_create_entry(title="sec", data=user_input)
 
-        data_schema = vol.Schema({vol.Required("api_key"): str})
+        data_schema = vol.Schema(
+            {vol.Required("api_key"): str, vol.Required("zip_code"): str}
+        )
 
         return self.async_show_form(
             step_id="user",
             data_schema=data_schema,
             description_placeholders={
-                "supplier_help": "Select your current supplier from the list",
-                "distribution_region_help": "Select your distribution region from the list",
+                "api_key": "Enter your api key",
+                "zip_code": "Enter your zip code",
             },
         )
 
@@ -78,7 +80,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_contract_selection()
 
         # Fetch the list of keys from the API using the existing API object
-        api = self.hass.data["smartenergycontrol"][self.config_entry.entry_id]
+        api = self.hass.data[DOMAIN][self.config_entry.entry_id]
         contracts = await api.fetch_data_only()
 
         # Normalize the data structure
@@ -117,7 +119,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_price_component_selection()
 
         # Fetch the list of keys from the API using the existing API objectself.hass
-        api = self.hass.data["smartenergycontrol"][self.config_entry.entry_id]
+        api = self.hass.data[DOMAIN][self.config_entry.entry_id]
         contracts = await api.fetch_data_only()
 
         # Normalize the data structure
@@ -154,7 +156,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
         """Handle the selection of a price component."""
         if user_input is not None:
             # Fetch the filtered contracts before creating the entry
-            api = self.hass.data["smartenergycontrol"][self.config_entry.entry_id]
+            api = self.hass.data[DOMAIN][self.config_entry.entry_id]
 
             options = {
                 "energietype": self.energy_type,
@@ -170,13 +172,13 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
                 options=options,
                 minor_version=self.config_entry.minor_version + 1,
             )
-            print(self.config_entry)
+            # print(self.config_entry)
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title=None, data=None)
 
         # Fetch the list of keys from the API using the existing API object
-        api = self.hass.data["smartenergycontrol"][self.config_entry.entry_id]
+        api = self.hass.data[DOMAIN][self.config_entry.entry_id]
         contracts = await api.fetch_data_only()
 
         # Normalize the data structure
