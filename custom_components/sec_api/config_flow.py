@@ -1,8 +1,14 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import DOMAIN
-from .binary_sensor import SmartEnergyControlBinarySensor
+from .const import DOMAIN, SENSORS_PATH
+
+import logging
+import json
+import os
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
+logging.getLogger(DOMAIN).setLevel(logging.INFO)
 
 
 @config_entries.HANDLERS.register(DOMAIN)
@@ -42,10 +48,35 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
         self.segment = None
         self.supplier = None
         self.contract = None
+        self.action = None
 
     async def async_step_init(self, user_input=None):
         """Handle the initial step of the options flow."""
-        return await self.async_step_selection()
+        if user_input is not None:
+            self.action = user_input["action"]
+            if self.action == "Add contract":
+                return await self.async_step_selection()
+            elif self.action == "Remove contract":
+                return await self.async_step_remove_contract()
+            elif self.action == "Set current contract":
+                # Placeholder for set current contract logic
+                return await self.async_step_set_current_contract()
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("action"): vol.In(
+                    ["Add contract", "Remove contract", "Set current contract"]
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=data_schema,
+            description_placeholders={
+                "action_help": "Select an action: Add, Remove, or Set Current Contract",
+            },
+        )
 
     async def async_step_selection(self, user_input=None):
         """Handle the selection of energy type, contract type, and segment."""
@@ -70,6 +101,76 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             data_schema=data_schema,
             description_placeholders={
                 "selection_help": "Select the required options",
+            },
+        )
+
+    async def async_step_remove_contract(self, user_input=None):
+        """Handle the removal of a contract."""
+        if user_input is not None:
+            # Remove the selected contract
+            selected_contract = user_input["selected_contract"]
+            # Access stored contracts and remove the selected one
+            contracts = self.hass.data["sec_sensors"][self.config_entry.entry_id]
+            contracts.pop(selected_contract, None)
+
+            # Update the entry in `hass.data` to reflect the removal
+            self.hass.data["sec_sensors"][self.config_entry.entry_id] = contracts
+
+            # Reload the entry to apply the change
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+            return self.async_create_entry(title="Contract Removed", data=None)
+
+        # Fetch existing contracts
+        contracts = self.hass.data["sec_sensors"][self.config_entry.entry_id]
+        contract_names = list(contracts.keys())
+
+        data_schema = vol.Schema(
+            {vol.Required("selected_contract"): vol.In(contract_names)}
+        )
+
+        return self.async_show_form(
+            step_id="remove_contract",
+            data_schema=data_schema,
+            description_placeholders={
+                "remove_help": "Select a contract to remove",
+            },
+        )
+
+    async def async_step_set_current_contract(self, user_input=None):
+        """Handle setting a contract as the current contract."""
+        if user_input is not None:
+            selected_contract = user_input["selected_contract"]
+
+            # Fire an event to update the CurrentContractBinarySensor
+            self.hass.bus.async_fire(
+                "current_contract_selected", {"selected_contract_id": selected_contract}
+            )
+
+            return self.async_create_entry(title="Current Contract Set", data=None)
+
+        # Fetch existing contracts (sensors) from the JSON file
+        existing_sensors = await load_sensors_from_file()
+
+        # Get contracts associated with the current entry_id
+        contracts = existing_sensors.get(self.config_entry.entry_id, {})
+        contract_names = list(contracts.keys())
+
+        # If no contracts are found, handle gracefully
+        if not contract_names:
+            _LOGGER.warning("No contracts found for the current entry.")
+            return self.async_abort(reason="no_contracts_found")
+
+        # Create a form schema for selecting a contract
+        data_schema = vol.Schema(
+            {vol.Required("selected_contract"): vol.In(contract_names)}
+        )
+
+        return self.async_show_form(
+            step_id="set_current_contract",
+            data_schema=data_schema,
+            description_placeholders={
+                "set_contract_help": "Select the contract you want to set as current",
             },
         )
 
@@ -118,7 +219,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             self.contract = user_input["selected_contract"]
             return await self.async_step_price_component_selection()
 
-        # Fetch the list of keys from the API using the existing API objectself.hass
+        # Fetch the list of keys from the API using the existing API object
         api = self.hass.data[DOMAIN][self.config_entry.entry_id]
         contracts = await api.fetch_data_only()
 
@@ -172,7 +273,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
                 options=options,
                 minor_version=self.config_entry.minor_version + 1,
             )
-            # print(self.config_entry)
+            # Reload the entry to apply the change
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title=None, data=None)
@@ -215,3 +316,15 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
                 "price_components_help": "Select a price component from the list",
             },
         )
+
+
+async def load_sensors_from_file():
+    """Load sensors from the local JSON file."""
+    if os.path.exists(SENSORS_PATH):
+        with open(SENSORS_PATH, "r") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                _LOGGER.error("Failed to decode JSON file, returning empty dictionary")
+                return {}
+    return {}

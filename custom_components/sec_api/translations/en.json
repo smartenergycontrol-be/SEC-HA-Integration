@@ -17,10 +17,11 @@
         "step": {
             "user": {
                 "data": {
-                    "api_key": "Supplier"
+                    "api_key": "API key",
+                    "zip_code": "ZIP code"
                 },
-                "description": "Choose your supplier from the list below",
-                "title": "Choose your supplier"
+                "description": "Enter your API key and ZIP code below",
+                "title": "Configuration"
             }
         }
     },

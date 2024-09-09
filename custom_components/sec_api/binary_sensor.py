@@ -6,14 +6,34 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 import logging
+import json
+import os
 from datetime import timedelta
 from . import MyApi
-from .const import DOMAIN, SENSOR_REFRESH_TIME
+from .const import DOMAIN, SENSOR_REFRESH_TIME, SENSORS_PATH
 
 _LOGGER = logging.getLogger(__name__)
 
 
 SENSOR_STORAGE_KEY = "sec_sensors"
+
+
+async def load_sensors_from_file():
+    """Load sensors from the local JSON file."""
+    if os.path.exists(SENSORS_PATH):
+        with open(SENSORS_PATH, "r") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                _LOGGER.error("Failed to decode JSON file, returning empty dictionary")
+                return {}
+    return {}
+
+
+async def save_sensors_to_file(sensors_data):
+    """Save sensors data to the local JSON file."""
+    with open(SENSORS_PATH, "w+") as f:
+        json.dump(sensors_data, f, indent=4)
 
 
 async def async_setup_entry(
@@ -22,46 +42,72 @@ async def async_setup_entry(
     """Set up binary sensor platform."""
     api: MyApi = hass.data[DOMAIN][entry.entry_id]
 
-    data = entry.options
-
-    if SENSOR_STORAGE_KEY not in hass.data:
-        hass.data[SENSOR_STORAGE_KEY] = {}
-
-    if entry.entry_id not in hass.data[SENSOR_STORAGE_KEY]:
-        hass.data[SENSOR_STORAGE_KEY][entry.entry_id] = {}
-
-    existing_sensors = hass.data[SENSOR_STORAGE_KEY][entry.entry_id]
+    existing_sensors = await load_sensors_from_file()
 
     sensors = []
 
-    found_contracts = await api.fetch_data_only(
-        f"energietype={data['energietype']}",
-        f"vast_variabel_dynamisch={data['vast_variabel_dynamisch']}",
-        f"segment={data['segment']}",
-        f"handelsnaam={data['handelsnaam']}",
-        f"productnaam={data['productnaam']}",
-        f"prijsonderdeel={data['prijsonderdeel']}",
-    )
+    # Initialize and add CurrentContractBinarySensor
+    current_contract_sensor = CurrentContractBinarySensor(hass)
+    sensors.append(current_contract_sensor)
 
-    data = found_contracts[list(found_contracts.keys())[0]]
-
-    for row in existing_sensors.values():
-        sensors.append(
-            SmartEnergyControlBinarySensor(hass, api, entry, row.extra_state_attributes)
+    # Fetch contract data and initialize SmartEnergyControlBinarySensors
+    try:
+        found_contracts = await api.fetch_data_only(
+            f"energietype={entry.options['energietype']}",
+            f"vast_variabel_dynamisch={entry.options['vast_variabel_dynamisch']}",
+            f"segment={entry.options['segment']}",
+            f"handelsnaam={entry.options['handelsnaam']}",
+            f"productnaam={entry.options['productnaam']}",
+            f"prijsonderdeel={entry.options['prijsonderdeel']}",
         )
 
-    for row in data.get("prijsonderdelen", []):
-        sensor_id = f"{DOMAIN}_{row['handelsnaam']}_{row['productnaam']}_{row['prijsonderdeel']}_{row['energietype']}_{row['segment']}_{row['vast_variabel_dynamisch']}_{row['contracttype']}_{row['id']}".lower().replace(
-            " ", "_"
-        )
+        data = found_contracts[list(found_contracts.keys())[0]]
 
-        sensor = SmartEnergyControlBinarySensor(hass, api, entry, row)
-        if sensor.unique_id not in existing_sensors:
-            existing_sensors[sensor_id] = sensor
+        # Add existing sensors
+        for row in existing_sensors.get(entry.entry_id, {}).values():
+            sensors.append(
+                SmartEnergyControlBinarySensor(
+                    hass, api, entry, row["extra_state_attributes"]
+                )
+            )
 
-        sensors.append(sensor)
+        # Add sensors based on fetched data
+        for row in data.get("prijsonderdelen", []):
+            sensor_id = f"{DOMAIN}_{row['handelsnaam']}_{row['productnaam']}_{row['prijsonderdeel']}_{row['energietype']}_{row['segment']}_{row['vast_variabel_dynamisch']}_{row['id']}".lower().replace(
+                " ", "_"
+            )
 
+            sensor = SmartEnergyControlBinarySensor(hass, api, entry, row)
+            if sensor_id not in existing_sensors.get(entry.entry_id, {}):
+                if entry.entry_id not in existing_sensors:
+                    existing_sensors[entry.entry_id] = {}
+
+                existing_sensors[entry.entry_id][sensor_id] = {
+                    "extra_state_attributes": row
+                }
+                await save_sensors_to_file(existing_sensors)
+
+            sensors.append(sensor)
+    except Exception as e:
+        _LOGGER.error(f"Failed to fetch contract data: {e}")
+        pass
+
+    # Add all sensors (including the CurrentContractBinarySensor) to Home Assistant
     async_add_entities(sensors)
+
+    # Store reference to current contract sensor
+    hass.data["sec_current_contract_sensor"] = current_contract_sensor
+
+    # Listen for changes in the selected contract and update the current contract sensor
+    async def handle_contract_selection(event):
+        """Handle contract selection update."""
+        selected_contract_id = event.data.get("selected_contract_id")
+        if selected_contract_id:
+            _LOGGER.info(f"Current contract sensor updated to: {selected_contract_id}")
+            current_contract_sensor.update_current_sensor(selected_contract_id)
+
+    # Subscribe to the event that updates the current contract
+    hass.bus.async_listen("current_contract_selected", handle_contract_selection)
 
 
 class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -77,18 +123,19 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._entry = entry
 
         name_attrs = [
-            "sec",
+            DOMAIN,
             data["handelsnaam"],
             data["productnaam"],
             data["prijsonderdeel"],
             data["energietype"],
             data["segment"],
             data["vast_variabel_dynamisch"],
-            data["contracttype"],
+            #    data["contracttype"],
+            str(data["id"]),
         ]
 
         self._name = "_".join(name_attrs).lower().replace(" ", "_")
-        self._unique_id = f"{DOMAIN}_{self._name}_{data['id']}"
+        self._unique_id = self._name
 
         # Setting up the DataUpdateCoordinator
         self.coordinator = DataUpdateCoordinator(
@@ -116,10 +163,7 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
             zip_code=self._entry.data["zip_code"],
         )
         data = data[list(data.keys())[0]]
-        for row in data["prijsonderdelen"]:
-            if row["contracttype"] == self.extra_state_attributes["contracttype"]:
-                return row
-        return {}
+        return data["prijsonderdelen"][0]
 
     @property
     def unique_id(self):
@@ -151,7 +195,10 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Handle updated data from the coordinator."""
         self._attributes = self.coordinator.data
 
-        self._state = self._attributes.get("prices", {}).get("current_price", 0)
+        self._state = [
+            self._attributes.get("prices_afname", {}).get("current_price", 0),
+            self._attributes.get("prices_injectie", {}).get("current_price", 0),
+        ]
         self.async_write_ha_state()
 
     class SmartEnergyControlConstSensor:
@@ -159,3 +206,83 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         def __init__(self, entry):
             "Initialize const sensor."
+
+
+class CurrentContractBinarySensor(BinarySensorEntity):
+    """Representation of the Current Contract binary sensor that listens to another sensor."""
+
+    def __init__(self, hass: HomeAssistant):
+        """Initialize the Current Contract binary sensor."""
+        self._hass = hass
+        self._state = None
+        self._attributes = {}
+        self._current_sensor_id = None
+        self._name = "sec_current_contract_sensor"
+        self._unique_id = f"{DOMAIN}_current_contract"
+        self._remove_listener = None  # Listener to remove when contract changes
+        _LOGGER.info("Initialized CurrentContractBinarySensor")
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self):
+        """Return the attributes of the sensor."""
+        return self._attributes
+
+    @callback
+    def update_current_sensor(self, sensor_id):
+        """Update the sensor to track a new sensor."""
+        if self._remove_listener:
+            self._remove_listener()
+
+        self._current_sensor_id = sensor_id
+        _LOGGER.info(f"Now tracking: binary_sensor.{self._current_sensor_id}")
+        all_states = self._hass.states.async_all()
+        state = ""
+
+        for _state in all_states:
+            if _state.entity_id == f"binary_sensor.{self._current_sensor_id}":
+                state = _state
+        if state:
+            _LOGGER.info("")
+            _LOGGER.info(f"State set to {state.state}")
+            self._state = state.state
+            self._attributes = state.attributes
+        else:
+            self._state = None
+            self._attributes = {}
+
+        self.async_write_ha_state()
+
+        # Set up a listener to track future updates to the sensor
+        @callback
+        def sensor_state_listener(event):
+            """Handle state updates of the tracked sensor."""
+            if state.entity_id != self._current_sensor_id:
+                return
+
+            _LOGGER.info("data:")
+            _LOGGER.info(event.data.get("entity_id"))
+            new_state = event.data.get("new_state")
+            if new_state:
+                self._state = new_state.state
+                self._attributes = new_state.attributes
+                _LOGGER.info(f"Current contract sensor state updated: {self._state}")
+                self.async_write_ha_state()
+
+        # Listen to state changes of the selected sensor
+        self._remove_listener = self._hass.bus.async_listen(
+            "state_changed", sensor_state_listener
+        )
+
+    async def async_added_to_hass(self):
+        """Called when the sensor is added to Home Assistant."""
+        pass

@@ -1,5 +1,6 @@
 import aiohttp
 import logging
+import urllib.parse
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ class MyApi:
     async def fetch_data(self, *args):
         """Fetch data from the API."""
         # print(f"Fetching {self.base_url}?{'&'.join(args)}")
+        # args = [urllib.parse.quote(arg) for arg in args]
+        _LOGGER.info(f"{self.base_url}?{'&'.join(args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(args)}",
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -71,6 +74,8 @@ class MyApi:
         if show_prices:
             sp = f"show_prices=yes&postcode={zip_code}"
 
+        # args = [urllib.parse.quote(arg) for arg in args]
+
         current_times = await self.get_current_time()
         data = await self.fetch_data(
             f"maand={current_times["maand"]}",
@@ -78,8 +83,7 @@ class MyApi:
             *args,
             sp,
         )
-        data = data.get("data", {})
-        return data
+        return data.get("data", {})
 
     async def get_current_time(self):
         "Get current year and month."
