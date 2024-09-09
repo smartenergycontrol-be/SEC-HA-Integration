@@ -144,5 +144,41 @@
                 "wkk_injectie": null
             }
         }
+    },
+    "01J7BVCWVQXK667DENDTYENT6B": {
+        "sec_api_dats_24_aardgas_variabel_enkelvoudige_meter_dagtarief_(c\u20ac/kwh)_gas_woning_variabel_563": {
+            "extra_state_attributes": {
+                "a_afname": null,
+                "b_afname": null,
+                "beschrijving_x_afname": "Gewogen gemiddelde van de TTF EGSI noteringen day ahead en weekend per maand. Weging o.b.v. het RLP0N profiel. Bron: EEX",
+                "beschrijving_y_afname": null,
+                "c_afname": null,
+                "contracttype": "Afname",
+                "d_afname": null,
+                "energietype": "Gas",
+                "groene_stroom_afname": null,
+                "handelsnaam": "DATS 24",
+                "id": 563,
+                "id_afname": 563,
+                "indexatieparameter_x_afname": "M TTF RLP0N EGSI EEX",
+                "indexatieparameter_y_afname": null,
+                "jaar": "2024",
+                "maand": "mei",
+                "prijs_afname": 33.02,
+                "prijsonderdeel": "Enkelvoudige meter dagtarief (c\u20ac/kWh)",
+                "productnaam": "Aardgas Variabel",
+                "segment": "Woning",
+                "vast_variabel_dynamisch": "Variabel",
+                "vaste_vergoeding_afname": null,
+                "vaste_vergoeding_enkelvoudige_meter_afname": null,
+                "vaste_vergoeding_tweevoudige_meter_afname": null,
+                "vaste_vergoeding_uitsluitend_nachttarief_afname": null,
+                "waarde_x_laatst_gekende_afname": 28.8207,
+                "waarde_x_vreg_afname": 34.0293,
+                "waarde_y_laatst_gekende_afname": null,
+                "waarde_y_vreg_afname": null,
+                "wkk_afname": null
+            }
+        }
     }
 }

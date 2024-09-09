@@ -48,7 +48,7 @@ class MyApi:
     async def fetch_data(self, *args):
         """Fetch data from the API."""
         # print(f"Fetching {self.base_url}?{'&'.join(args)}")
-        # args = [urllib.parse.quote(arg) for arg in args]
+        args = [urllib.parse.quote(arg) for arg in args]
         _LOGGER.info(f"{self.base_url}?{'&'.join(args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(args)}",
