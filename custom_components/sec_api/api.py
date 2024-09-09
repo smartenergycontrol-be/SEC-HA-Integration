@@ -47,11 +47,21 @@ class MyApi:
 
     async def fetch_data(self, *args):
         """Fetch data from the API."""
+        _args = []
+        for arg in args:
+            _LOGGER.info(arg)
+            _arg = arg.split("=")
+            if len(_arg) == 2:
+                _arg[1] = urllib.parse.quote(_arg[1])
+                _arg = "=".join(_arg)
+            else:
+                _arg = _arg[0]
+            _args.append(_arg)
         # print(f"Fetching {self.base_url}?{'&'.join(args)}")
-        args = [urllib.parse.quote(arg) for arg in args]
-        _LOGGER.info(f"{self.base_url}?{'&'.join(args)}")
+        # args = [urllib.parse.quote(arg) for arg in args]
+        _LOGGER.info(f"{self.base_url}?{'&'.join(_args)}")
         async with self.session.get(
-            f"{self.base_url}?{'&'.join(args)}",
+            f"{self.base_url}?{'&'.join(_args)}",
             headers={"Authorization": f"Bearer {self.api_key}"},
         ) as response:
             return await response.json()
@@ -73,8 +83,6 @@ class MyApi:
         sp = ""
         if show_prices:
             sp = f"show_prices=yes&postcode={zip_code}"
-
-        # args = [urllib.parse.quote(arg) for arg in args]
 
         current_times = await self.get_current_time()
         data = await self.fetch_data(
