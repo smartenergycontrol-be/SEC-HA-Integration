@@ -54,6 +54,8 @@ class MyApi:
             if len(_arg) == 2:
                 _arg[1] = urllib.parse.quote(_arg[1])
                 _arg = "=".join(_arg)
+            elif _arg[0] == "show_prices":
+                _arg = f"{_arg[0]}=yes"
             else:
                 _arg = _arg[0]
             _args.append(_arg)
