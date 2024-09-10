@@ -10,7 +10,18 @@ import json
 import os
 from datetime import timedelta
 from . import MyApi
-from .const import DOMAIN, SENSOR_REFRESH_TIME, SENSORS_PATH
+from .const import (
+    DOMAIN,
+    SENSOR_REFRESH_TIME,
+    SENSORS_PATH,
+    BIJZ_ACCIJNS,
+    ENERGIEFONDS_RES,
+    ENERGIEFONDS_NIET_RES,
+    BIJDRAGE_ENERGIE,
+    AANSLUITINGSVERGOEDING,
+    GSC,
+    WKK,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +62,8 @@ async def async_setup_entry(
     sensors.append(current_contract_sensor)
     for contracttype in ["afname", "injectie"]:
         sensors.append(CurrentContractBinarySensorState(hass, contracttype))
+
+    sensors.append(ConstValuesBinarySensor(hass, entry))
 
     # Fetch contract data and initialize SmartEnergyControlBinarySensors
     try:
@@ -352,3 +365,44 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
         """Called when the entity is about to be removed."""
         if self._remove_listener:
             self._remove_listener()
+
+
+class ConstValuesBinarySensor(BinarySensorEntity):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+        self._name = "sec_constant_values"
+        self._state = 0
+        self._hass = hass
+        self._attributes = {}
+        self._unique_id = f"{DOMAIN}_constant_values"
+        self._entry = entry
+
+        self.format_attributes()
+
+    @property
+    def unique_id(self):
+        """Return unique id."""
+        return self._unique_id
+
+    @property
+    def name(self):
+        """Return name."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return state."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self):
+        """Return extra attributes."""
+        return self._attributes
+
+    def format_attributes(self):
+        """Set constant attributes."""
+        self._attributes["bijz_accijns"] = BIJZ_ACCIJNS
+        self._attributes["bijdrage_energie"] = BIJDRAGE_ENERGIE
+        self._attributes["aansluitingsvergoeding"] = AANSLUITINGSVERGOEDING
+        self._attributes["gsc"] = GSC
+        self._attributes["wkk"] = WKK
+        self._attributes["region"] = self._entry.data.get("zip_code")
