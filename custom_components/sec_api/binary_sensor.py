@@ -49,6 +49,8 @@ async def async_setup_entry(
     # Initialize and add CurrentContractBinarySensor
     current_contract_sensor = CurrentContractBinarySensor(hass)
     sensors.append(current_contract_sensor)
+    for contracttype in ["afname", "injectie"]:
+        sensors.append(CurrentContractBinarySensorState(hass, contracttype))
 
     # Fetch contract data and initialize SmartEnergyControlBinarySensors
     try:
@@ -286,3 +288,67 @@ class CurrentContractBinarySensor(BinarySensorEntity):
     async def async_added_to_hass(self):
         """Called when the sensor is added to Home Assistant."""
         pass
+
+
+class CurrentContractBinarySensorState(BinarySensorEntity):
+    """Representation of a sensor that mirrors the state of CurrentContractBinarySensor."""
+
+    def __init__(self, hass: HomeAssistant, to_track: str):
+        """Initialize the sensor that mirrors the state of CurrentContractBinarySensor."""
+        self._hass = hass
+        self._state = None
+        self._attributes = {}
+        self._to_track = to_track
+        self._name = f"sec_current_contract_sensor_{self._to_track}"
+        self._unique_id = f"{DOMAIN}_current_contract_{self._to_track}"
+        self._remove_listener = None
+        self._tracked_entity_id = "binary_sensor.sec_current_contract_sensor"
+        _LOGGER.info("Initialized CurrentContractBinarySensorState")
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the current state of the sensor."""
+        return self._state
+
+    @property
+    def extra_state_attributes(self):
+        """Return the attributes of the sensor."""
+        return self._attributes
+
+    @callback
+    def update_from_tracked_sensor(self, event):
+        """Update state and attributes from the tracked sensor."""
+        entity_id = event.data.get("entity_id")
+        if entity_id == self._tracked_entity_id:
+            new_state = event.data.get("new_state")
+            if new_state:
+                if self._to_track == "afname":
+                    self._state = eval(new_state.state)[0]
+                elif self._to_track == "injectie":
+                    self._state = eval(new_state.state)[1]
+                # self._attributes = new_state.attributes
+                _LOGGER.info(f"Mirrored sensor state updated: {self._state}")
+                self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Called when the sensor is added to Home Assistant."""
+        # Ensure we set the initial state from the tracked sensor
+        state = self._hass.states.get(self._tracked_entity_id)
+        if state:
+            self._state = state.state
+            self._attributes = state.attributes
+
+        # Set up a listener to track future state updates of the original sensor
+        self._remove_listener = self._hass.bus.async_listen(
+            "state_changed", self.update_from_tracked_sensor
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Called when the entity is about to be removed."""
+        if self._remove_listener:
+            self._remove_listener()
