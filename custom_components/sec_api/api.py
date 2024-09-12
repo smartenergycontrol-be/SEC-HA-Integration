@@ -18,7 +18,7 @@ class MyApi:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.base_url}",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    headers={"Authorization": self.api_key},
                 ) as response:
                     if response.status == 200:
                         _LOGGER.debug(
@@ -26,7 +26,7 @@ class MyApi:
                         )
                         return True
                     else:
-                        _LOGGER.debug(
+                        _LOGGER.info(
                             "Failed to authenticate with the Smart Energy Control API. Status code: %s",
                             response.status,
                         )
@@ -64,7 +64,7 @@ class MyApi:
         _LOGGER.info(f"{self.base_url}?{'&'.join(_args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(_args)}",
-            headers={"Authorization": f"Bearer {self.api_key}"},
+            headers={"Authorization": self.api_key},
         ) as response:
             return await response.json()
 
@@ -100,6 +100,6 @@ class MyApi:
         # print(f"Fetching {self.base_url[:-5]}/month")
         async with self.session.get(
             f"{self.base_url[:-5]}/month",
-            headers={"Authorization": f"Bearer {self.api_key}"},
+            headers={"Authorization": self.api_key},
         ) as response:
             return await response.json()
