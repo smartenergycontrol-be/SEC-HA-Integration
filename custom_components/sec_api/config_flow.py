@@ -142,7 +142,16 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             selected_contract = user_input["selected_contract"]
 
-            # Fire an event to update the CurrentContractBinarySensor
+            # Update the selected contract in the config entry options
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                options={
+                    **self.config_entry.options,
+                    "selected_contract_id": selected_contract,
+                },
+            )
+
+            # Fire an event to notify the CurrentContractBinarySensor
             self.hass.bus.async_fire(
                 "current_contract_selected", {"selected_contract_id": selected_contract}
             )

@@ -58,10 +58,10 @@ async def async_setup_entry(
     sensors = []
 
     # Initialize and add CurrentContractBinarySensor
-    current_contract_sensor = CurrentContractBinarySensor(hass)
+    current_contract_sensor = CurrentContractBinarySensor(hass, entry)
     sensors.append(current_contract_sensor)
     for contracttype in ["afname", "injectie"]:
-        sensors.append(CurrentContractBinarySensorState(hass, contracttype))
+        sensors.append(CurrentContractBinarySensorState(hass, entry, contracttype))
 
     sensors.append(ConstValuesBinarySensor(hass, entry))
 
@@ -226,15 +226,16 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
 class CurrentContractBinarySensor(BinarySensorEntity):
     """Representation of the Current Contract binary sensor that listens to another sensor."""
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         """Initialize the Current Contract binary sensor."""
         self._hass = hass
+        self._entry = entry
         self._state = None
         self._attributes = {}
         self._current_sensor_id = None
         self._name = "sec_current_contract_sensor"
         self._unique_id = f"{DOMAIN}_current_contract"
-        self._remove_listener = None  # Listener to remove when contract changes
+        self._remove_listener = None
         _LOGGER.info("Initialized CurrentContractBinarySensor")
 
     @property
@@ -253,6 +254,17 @@ class CurrentContractBinarySensor(BinarySensorEntity):
         return self._attributes
 
     @callback
+    def _sensor_state_listener(self, event):
+        """Handle state updates of the tracked sensor."""
+        if event.data.get("entity_id") == f"binary_sensor.{self._current_sensor_id}":
+            new_state = event.data.get("new_state")
+            if new_state:
+                self._state = new_state.state
+                self._attributes = new_state.attributes
+                _LOGGER.info(f"Current contract sensor state updated: {self._state}")
+                self.async_write_ha_state()
+
+    @callback
     def update_current_sensor(self, sensor_id):
         """Update the sensor to track a new sensor."""
         if self._remove_listener:
@@ -262,9 +274,8 @@ class CurrentContractBinarySensor(BinarySensorEntity):
         _LOGGER.info(f"Now tracking: binary_sensor.{self._current_sensor_id}")
 
         state = self._hass.states.get(f"binary_sensor.{self._current_sensor_id}")
-
         if state:
-            _LOGGER.info(f"State set to {state.state}")
+            _LOGGER.info(f"Initial state set to {state.state}")
             self._state = state.state
             self._attributes = state.attributes
         else:
@@ -273,37 +284,50 @@ class CurrentContractBinarySensor(BinarySensorEntity):
 
         self.async_write_ha_state()
 
-        @callback
-        def sensor_state_listener(event):
-            """Handle state updates of the tracked sensor."""
-            if (
-                event.data.get("entity_id")
-                != f"binary_sensor.{self._current_sensor_id}"
-            ):
-                return
-
-            new_state = event.data.get("new_state")
-            if new_state:
-                self._state = new_state.state
-                self._attributes = new_state.attributes
-                _LOGGER.info(f"Current contract sensor state updated: {self._state}")
-                self.async_write_ha_state()
-
+        # Add listener for state changes of the tracked sensor
         self._remove_listener = self._hass.bus.async_listen(
-            "state_changed", sensor_state_listener
+            "state_changed", self._sensor_state_listener
         )
 
     async def async_added_to_hass(self):
         """Called when the sensor is added to Home Assistant."""
-        pass
+        # Get the selected contract from the config entry options
+        selected_contract = self._entry.options.get("selected_contract_id")
+        if selected_contract:
+            _LOGGER.info(
+                f"Reloading selected contract from options: {selected_contract}"
+            )
+            self.update_current_sensor(selected_contract)
+        else:
+            _LOGGER.info("No contract selected in config options.")
+
+        # Add listener for future state changes
+        if self._current_sensor_id:
+            self._remove_listener = self._hass.bus.async_listen(
+                "state_changed", self._sensor_state_listener
+            )
+
+    async def async_will_remove_from_hass(self):
+        """Called when the entity is about to be removed."""
+        if self._remove_listener:
+            self._remove_listener()
+
+    async def options_updated(self):
+        """Handle updates to the options, such as contract changes."""
+        # When options are updated, get the new contract ID
+        selected_contract = self._entry.options.get("selected_contract_id")
+        if selected_contract:
+            _LOGGER.info(f"Selected contract updated to: {selected_contract}")
+            self.update_current_sensor(selected_contract)
 
 
 class CurrentContractBinarySensorState(BinarySensorEntity):
     """Representation of a sensor that mirrors the state of CurrentContractBinarySensor."""
 
-    def __init__(self, hass: HomeAssistant, to_track: str):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, to_track: str):
         """Initialize the sensor that mirrors the state of CurrentContractBinarySensor."""
         self._hass = hass
+        self._entry = entry
         self._state = None
         self._attributes = {}
         self._to_track = to_track
@@ -331,8 +355,8 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
         return self._attributes
 
     @callback
-    def update_from_tracked_sensor(self, event):
-        """Update state and attributes from the tracked sensor."""
+    def _sensor_state_listener(self, event):
+        """Handle state updates from the tracked sensor."""
         entity_id = event.data.get("entity_id")
         if entity_id != self._tracked_entity_id:
             return
@@ -369,6 +393,7 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
 
     async def async_added_to_hass(self):
         """Called when the sensor is added to Home Assistant."""
+        # Retrieve the contract state from the tracked entity (CurrentContractBinarySensor)
         state = self._hass.states.get(self._tracked_entity_id)
         if state:
             try:
@@ -388,17 +413,64 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
                 _LOGGER.error(
                     f"Error evaluating initial state of {self._tracked_entity_id}: {e}"
                 )
+            except Exception as e:
+                pass
 
         self.async_write_ha_state()
 
+        # Listen for state changes on the tracked entity
         self._remove_listener = self._hass.bus.async_listen(
-            "state_changed", self.update_from_tracked_sensor
+            "state_changed", self._sensor_state_listener
         )
 
     async def async_will_remove_from_hass(self):
         """Called when the entity is about to be removed."""
         if self._remove_listener:
             self._remove_listener()
+
+    async def options_updated(self):
+        """Handle updates to the options when the contract changes."""
+        selected_contract = self._entry.options.get("selected_contract_id")
+        if selected_contract:
+            _LOGGER.info(f"Selected contract updated to: {selected_contract}")
+            self.update_tracked_sensor(selected_contract)
+
+    @callback
+    def update_tracked_sensor(self, sensor_id):
+        """Update the sensor to track the new contract."""
+        self._tracked_entity_id = f"binary_sensor.{sensor_id}"
+        _LOGGER.info(f"Tracking new contract entity: {self._tracked_entity_id}")
+
+        # Retrieve the current state of the new contract
+        state = self._hass.states.get(self._tracked_entity_id)
+        if state:
+            try:
+                state_values = eval(state.state)
+                if isinstance(state_values, (list, tuple)) and len(state_values) == 2:
+                    if self._to_track == "afname":
+                        self._state = state_values[0]
+                    elif self._to_track == "injectie":
+                        self._state = state_values[1]
+                    else:
+                        _LOGGER.error(f"Invalid tracking option: {self._to_track}")
+                else:
+                    _LOGGER.error(
+                        "Tracked sensor state is not a valid list or tuple with two elements"
+                    )
+            except (SyntaxError, TypeError) as e:
+                _LOGGER.error(
+                    f"Error evaluating state of {self._tracked_entity_id}: {e}"
+                )
+
+        self.async_write_ha_state()
+
+        # Listen for state changes on the new contract
+        if self._remove_listener:
+            self._remove_listener()
+
+        self._remove_listener = self._hass.bus.async_listen(
+            "state_changed", self._sensor_state_listener
+        )
 
 
 class ConstValuesBinarySensor(BinarySensorEntity):
