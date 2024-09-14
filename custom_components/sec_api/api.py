@@ -49,13 +49,12 @@ class MyApi:
         """Fetch data from the API."""
         _args = []
         for arg in args:
-            _LOGGER.info(arg)
             _arg = arg.split("=")
             if len(_arg) == 2:
                 _arg[1] = urllib.parse.quote(_arg[1])
                 _arg = "=".join(_arg)
             elif _arg[0] == "show_prices":
-                _arg = f"{_arg[0]}=yes"
+                _arg = "=".join(_arg)
             else:
                 _arg = _arg[0]
             _args.append(_arg)

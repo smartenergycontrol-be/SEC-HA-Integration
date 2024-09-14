@@ -260,14 +260,10 @@ class CurrentContractBinarySensor(BinarySensorEntity):
 
         self._current_sensor_id = sensor_id
         _LOGGER.info(f"Now tracking: binary_sensor.{self._current_sensor_id}")
-        all_states = self._hass.states.async_all()
-        state = ""
 
-        for _state in all_states:
-            if _state.entity_id == f"binary_sensor.{self._current_sensor_id}":
-                state = _state
+        state = self._hass.states.get(f"binary_sensor.{self._current_sensor_id}")
+
         if state:
-            _LOGGER.info("")
             _LOGGER.info(f"State set to {state.state}")
             self._state = state.state
             self._attributes = state.attributes
@@ -277,15 +273,15 @@ class CurrentContractBinarySensor(BinarySensorEntity):
 
         self.async_write_ha_state()
 
-        # Set up a listener to track future updates to the sensor
         @callback
         def sensor_state_listener(event):
             """Handle state updates of the tracked sensor."""
-            if state.entity_id != self._current_sensor_id:
+            if (
+                event.data.get("entity_id")
+                != f"binary_sensor.{self._current_sensor_id}"
+            ):
                 return
 
-            _LOGGER.info("data:")
-            _LOGGER.info(event.data.get("entity_id"))
             new_state = event.data.get("new_state")
             if new_state:
                 self._state = new_state.state
@@ -293,7 +289,6 @@ class CurrentContractBinarySensor(BinarySensorEntity):
                 _LOGGER.info(f"Current contract sensor state updated: {self._state}")
                 self.async_write_ha_state()
 
-        # Listen to state changes of the selected sensor
         self._remove_listener = self._hass.bus.async_listen(
             "state_changed", sensor_state_listener
         )
@@ -316,7 +311,9 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
         self._unique_id = f"{DOMAIN}_current_contract_{self._to_track}"
         self._remove_listener = None
         self._tracked_entity_id = "binary_sensor.sec_current_contract_sensor"
-        _LOGGER.info("Initialized CurrentContractBinarySensorState")
+        _LOGGER.info(
+            f"Initialized CurrentContractBinarySensorState for {self._to_track}"
+        )
 
     @property
     def name(self):
@@ -337,26 +334,63 @@ class CurrentContractBinarySensorState(BinarySensorEntity):
     def update_from_tracked_sensor(self, event):
         """Update state and attributes from the tracked sensor."""
         entity_id = event.data.get("entity_id")
-        if entity_id == self._tracked_entity_id:
-            new_state = event.data.get("new_state")
-            if new_state:
-                if self._to_track == "afname":
-                    self._state = eval(new_state.state)[0]
-                elif self._to_track == "injectie":
-                    self._state = eval(new_state.state)[1]
-                # self._attributes = new_state.attributes
-                _LOGGER.info(f"Mirrored sensor state updated: {self._state}")
+        if entity_id != self._tracked_entity_id:
+            return
+
+        new_state = event.data.get("new_state")
+        if new_state:
+            try:
+                state_values = eval(new_state.state)
+                if isinstance(state_values, (list, tuple)) and len(state_values) == 2:
+                    if self._to_track == "afname":
+                        self._state = state_values[0]
+                    elif self._to_track == "injectie":
+                        self._state = state_values[1]
+                    else:
+                        _LOGGER.error(f"Invalid tracking option: {self._to_track}")
+                else:
+                    _LOGGER.error(
+                        "Tracked sensor state is not a valid list or tuple with two elements"
+                    )
+
+                _LOGGER.info(
+                    f"Mirrored sensor {self._name} state updated: {self._state}"
+                )
                 self.async_write_ha_state()
+
+            except (SyntaxError, TypeError) as e:
+                _LOGGER.error(
+                    f"Error evaluating state of {self._tracked_entity_id}: {e}"
+                )
+        else:
+            _LOGGER.warning(
+                f"Tracked sensor {self._tracked_entity_id} has no valid state"
+            )
 
     async def async_added_to_hass(self):
         """Called when the sensor is added to Home Assistant."""
-        # Ensure we set the initial state from the tracked sensor
         state = self._hass.states.get(self._tracked_entity_id)
         if state:
-            self._state = state.state
-            self._attributes = state.attributes
+            try:
+                state_values = eval(state.state)
+                if isinstance(state_values, (list, tuple)) and len(state_values) == 2:
+                    if self._to_track == "afname":
+                        self._state = state_values[0]
+                    elif self._to_track == "injectie":
+                        self._state = state_values[1]
+                    else:
+                        _LOGGER.error(f"Invalid tracking option: {self._to_track}")
+                else:
+                    _LOGGER.error(
+                        "Initial state is not a valid list or tuple with two elements"
+                    )
+            except (SyntaxError, TypeError) as e:
+                _LOGGER.error(
+                    f"Error evaluating initial state of {self._tracked_entity_id}: {e}"
+                )
 
-        # Set up a listener to track future state updates of the original sensor
+        self.async_write_ha_state()
+
         self._remove_listener = self._hass.bus.async_listen(
             "state_changed", self.update_from_tracked_sensor
         )
