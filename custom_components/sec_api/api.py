@@ -58,8 +58,7 @@ class MyApi:
             else:
                 _arg = _arg[0]
             _args.append(_arg)
-        # print(f"Fetching {self.base_url}?{'&'.join(args)}")
-        # args = [urllib.parse.quote(arg) for arg in args]
+        print(f"Fetching {self.base_url}?{'&'.join(args)}")
         _LOGGER.info(f"{self.base_url}?{'&'.join(_args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(_args)}",

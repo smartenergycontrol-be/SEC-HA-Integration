@@ -5,7 +5,7 @@ import os
 DOMAIN = "sec_api"
 
 API_KEY = "api-key"
-API_URL = "https://api.smartenergycontrol.be/data"
+API_URL = "http://localhost:5000/data"
 
 SENSOR_REFRESH_TIME = 5  # In minutes
 

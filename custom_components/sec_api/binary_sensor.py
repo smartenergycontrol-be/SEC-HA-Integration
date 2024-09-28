@@ -88,8 +88,17 @@ async def async_setup_entry(
 
         # Add sensors based on fetched data
         for row in data.get("prijsonderdelen", []):
-            sensor_id = f"{DOMAIN}_{row['handelsnaam']}_{row['productnaam']}_{row['prijsonderdeel']}_{row['energietype']}_{row['segment']}_{row['vast_variabel_dynamisch']}_{row['id']}".lower().replace(
-                " ", "_"
+            sensor_id = (
+                f"{DOMAIN}_{row['handelsnaam']}_{row['productnaam']}_{row['prijsonderdeel']}_{row['energietype']}_{row['segment']}_{row['vast_variabel_dynamisch']}_{row['id']}".lower()
+                .replace(" ", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace("€", "")
+                .replace("/", "")
+                .replace("@", "a")
+                .replace("&", "")
+                .replace("+", "")
+                .lower()
             )
 
             sensor = SmartEnergyControlBinarySensor(hass, api, entry, row)
@@ -149,7 +158,18 @@ class SmartEnergyControlBinarySensor(CoordinatorEntity, BinarySensorEntity):
             str(data["id"]),
         ]
 
-        self._name = "_".join(name_attrs).lower().replace(" ", "_")
+        self._name = (
+            "_".join(name_attrs)
+            .lower()
+            .replace(" ", "")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("€", "")
+            .replace("/", "")
+            .replace("@", "a")
+            .replace("&", "")
+            .replace("+", "")
+        )
         self._unique_id = self._name
 
         # Setting up the DataUpdateCoordinator
