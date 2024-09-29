@@ -16,10 +16,10 @@ Download this repository and place the contents of `custom_components` in your o
 
 ### HACS
 
-Add ths repo https://github.com/smartenergycontrol-be/SEC-HA-Integrationto your custom repo's in HACS.
+Add ths repo https://github.com/smartenergycontrol-be/SEC-HA-Integration to your custom repo's in HACS.
 Search for "Smartenergycontrol" and add the HACS integrations. Restart Home Assistant and add the integration through your settings or use the button below to add the repo and click download.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=smartenergycontrol-be&repository=SEC-HA-Integration&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=https://github.com/smartenergycontrol-be&repository=SEC-HA-Integration&category=integration)
 
 ------
 ## Configuration and use
