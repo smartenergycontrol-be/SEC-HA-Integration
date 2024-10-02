@@ -90,6 +90,7 @@ class MyApi:
             f"jaar={current_times["jaar"]}",
             *args,
             sp,
+            "interval=30",
         )
         return data.get("data", {})
 
