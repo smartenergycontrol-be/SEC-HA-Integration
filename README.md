@@ -1,11 +1,11 @@
 # Home Assistant smartenergycontrol.be component
 
-Custom component for Home Assistant to calculate hourly prices for all Belgian energy contract on the market
+Custom component for Home Assistant to calculate hourly prices for all Belgian energy contracts on the market (fixed, flexible and dynamic)
 
 
 
 ### Sensors
-cunsuption and injections prices for all contracts in the datasource. Hourly today and hourly next day when available trought the entso-e intgration. Also a sensor that holds all distributor and government parameters for electricty price calculation.
+cunsuption and injections prices for all contracts in the Vreg V-test datasource. Hourly today and hourly next day when available trought the entso-e API. Also a sensor that holds all distributor and government parameters for electricty price calculation.
   
 ------
 ## Installation
@@ -27,8 +27,8 @@ Search for "Smartenergycontrol" and add the HACS integrations. Restart Home Assi
 You can choose your current contract en energy distributer trough postal code using the web UI. 
 
 The integration will ask for your postal code (all Belgian postcodes supported) and an API key (contat us if you want access).
-The integration will get alle the up-to-date distribution tarifs for Belgiu (taxes, accijnzen, groene stoom WWK, capaciteits tarief etc) depending on where you live. You will be able to add all the existing Enegy contracts (fixed, flible and dynamic) that exist in the V-test from VREG (updated monthly). Select your current contract, add it as current, and select a nummber of other contracts from te list to compare.
-See your real daily electricity cost with you existing contract and compare with other contracts or formulas out there.
+The integration will get up-to-date distribution tarifs for Belgium (taxes, accijnzen, groene stoom WWK, capaciteits tarief etc) depending on where you live. You will be able to add all the existing Enegy contracts (fixed, flible and dynamic) that exist in the V-test from VREG (updated monthly). Add your contract, select it as current, and select a nummber of other contracts from te list to compare.
+See your real daily electricity cost with your existing contract and compare with other contracts or formulas out there.
 
 ------
 
