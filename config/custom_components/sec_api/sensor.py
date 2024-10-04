@@ -1,3 +1,8 @@
+from datetime import timedelta
+import json
+import logging
+import os
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -5,21 +10,16 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
-import logging
-import json
-import os
-from datetime import timedelta
+
 from . import MyApi
 from .const import (
+    AANSLUITINGSVERGOEDING,
+    BIJDRAGE_ENERGIE,
+    BIJZ_ACCIJNS,
     DOMAIN,
+    GSC,
     SENSOR_REFRESH_TIME,
     SENSORS_PATH,
-    BIJZ_ACCIJNS,
-    ENERGIEFONDS_RES,
-    ENERGIEFONDS_NIET_RES,
-    BIJDRAGE_ENERGIE,
-    AANSLUITINGSVERGOEDING,
-    GSC,
     WKK,
 )
 
@@ -32,7 +32,7 @@ SENSOR_STORAGE_KEY = "sec_sensors"
 async def load_sensors_from_file():
     """Load sensors from the local JSON file."""
     if os.path.exists(SENSORS_PATH):
-        with open(SENSORS_PATH, "r") as f:
+        with open(SENSORS_PATH) as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError:
@@ -114,7 +114,6 @@ async def async_setup_entry(
             sensors.append(sensor)
     except Exception as e:
         _LOGGER.error(f"Failed to fetch contract data: {e}")
-        pass
 
     # Add all sensors (including the CurrentContractSensor) to Home Assistant
     async_add_entities(sensors)
