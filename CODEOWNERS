@@ -1233,6 +1233,8 @@ build.json @home-assistant/supervisor
 /tests/components/search/ @home-assistant/core
 /homeassistant/components/season/ @frenck
 /tests/components/season/ @frenck
+/homeassistant/components/sec_api/ @jefcrb
+/tests/components/sec_api/ @jefcrb
 /homeassistant/components/select/ @home-assistant/core
 /tests/components/select/ @home-assistant/core
 /homeassistant/components/sense/ @kbickar
