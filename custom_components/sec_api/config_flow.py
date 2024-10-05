@@ -56,16 +56,25 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             self.action = user_input["action"]
             if self.action == "Add contract":
                 return await self.async_step_selection()
-            elif self.action == "Remove contract":
+            if self.action == "Remove contract":
                 return await self.async_step_remove_contract()
-            elif self.action == "Set current contract":
-                # Placeholder for set current contract logic
+            if self.action == "Set current contract":
                 return await self.async_step_set_current_contract()
+            if self.action == "Update API key":
+                return await self.async_step_update_api_key()
+            if self.action == "Update Zip code":
+                return await self.async_step_update_zip_code()
 
         data_schema = vol.Schema(
             {
                 vol.Required("action"): vol.In(
-                    ["Add contract", "Remove contract", "Set current contract"]
+                    [
+                        "Add contract",
+                        "Remove contract",
+                        "Set current contract",
+                        "Update API key",
+                        "Update Zip code",
+                    ]
                 ),
             }
         )
@@ -323,6 +332,66 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
             data_schema=data_schema,
             description_placeholders={
                 "price_components_help": "Select a price component from the list",
+            },
+        )
+
+    async def async_step_update_api_key(self, user_input=None):
+        """Handle the update of the API key."""
+        if user_input is not None:
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={
+                    **self.config_entry.data,
+                    "api_key": user_input["api_key"],
+                },
+            )
+
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+            return self.async_create_entry(title="API Key Updated", data=None)
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("api_key"): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="update_api_key",
+            data_schema=data_schema,
+            description_placeholders={
+                "update_api_key_help": "Update your API key",
+            },
+        )
+
+    async def async_step_update_zip_code(self, user_input=None):
+        """Handle the update of the zip code."""
+        if user_input is not None:
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={
+                    **self.config_entry.data,
+                    "zip_code": user_input["zip_code"],
+                },
+            )
+
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
+            return self.async_create_entry(title="Zip code updated", data=None)
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    "zip_code", default=self.config_entry.data.get("zip_code", "")
+                ): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="update_zip_code",
+            data_schema=data_schema,
+            description_placeholders={
+                "update_zip_code_help": "Update your zip code",
             },
         )
 
