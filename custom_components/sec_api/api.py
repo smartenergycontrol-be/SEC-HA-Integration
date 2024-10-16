@@ -58,8 +58,6 @@ class MyApi:
             else:
                 _arg = _arg[0]
             _args.append(_arg)
-        print(f"Fetching {self.base_url}?{'&'.join(args)}")
-        _LOGGER.info(f"{self.base_url}?{'&'.join(_args)}")
         async with self.session.get(
             f"{self.base_url}?{'&'.join(_args)}",
             headers={"Authorization": self.api_key},
@@ -99,6 +97,14 @@ class MyApi:
         # print(f"Fetching {self.base_url[:-5]}/month")
         async with self.session.get(
             f"{self.base_url[:-5]}/month",
+            headers={"Authorization": self.api_key},
+        ) as response:
+            return await response.json()
+
+    async def get_constants(self, zip_code):
+        """Get constants from the /constants endpoint."""
+        async with self.session.get(
+            f"{self.base_url[:-5]}/constants?postcode={zip_code}",
             headers={"Authorization": self.api_key},
         ) as response:
             return await response.json()

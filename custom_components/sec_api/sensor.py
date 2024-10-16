@@ -63,7 +63,7 @@ async def async_setup_entry(
     for contracttype in ["afname", "injectie"]:
         sensors.append(CurrentContractSensorState(hass, entry, contracttype))
 
-    sensors.append(ConstValuesSensor(hass, entry))
+    sensors.append(ConstValuesSensor(hass, entry, api))
 
     # Fetch contract data and initialize SmartEnergyControlSensors
     try:
@@ -126,7 +126,7 @@ async def async_setup_entry(
         """Handle contract selection update."""
         selected_contract_id = event.data.get("selected_contract_id")
         if selected_contract_id:
-            _LOGGER.info(f"Current contract sensor updated to: {selected_contract_id}")
+            # _LOGGER.info(f"Current contract sensor updated to: {selected_contract_id}")
             current_contract_sensor.update_current_sensor(selected_contract_id)
 
     # Subscribe to the event that updates the current contract
@@ -242,7 +242,7 @@ class CurrentContractSensor(SensorEntity):
         self._name = "sec_current_contract_sensor"
         self._unique_id = f"{DOMAIN}_current_contract"
         self._remove_listener = None
-        _LOGGER.info("Initialized CurrentContractSensor")
+        # _LOGGER.info("Initialized CurrentContractSensor")
 
     @property
     def name(self):
@@ -267,7 +267,7 @@ class CurrentContractSensor(SensorEntity):
             if new_state:
                 self._state = new_state.state
                 self._attributes = new_state.attributes
-                _LOGGER.info(f"Current contract sensor state updated: {self._state}")
+                # _LOGGER.info(f"Current contract sensor state updated: {self._state}")
                 self.async_write_ha_state()
 
     @callback
@@ -281,7 +281,7 @@ class CurrentContractSensor(SensorEntity):
 
         state = self._hass.states.get(f"sensor.{self._current_sensor_id}")
         if state:
-            _LOGGER.info(f"Initial state set to {state.state}")
+            # _LOGGER.info(f"Initial state set to {state.state}")
             self._state = state.state
             self._attributes = state.attributes
         else:
@@ -298,9 +298,6 @@ class CurrentContractSensor(SensorEntity):
         """Called when the sensor is added to Home Assistant."""
         selected_contract = self._entry.options.get("selected_contract_id")
         if selected_contract:
-            _LOGGER.info(
-                f"Reloading selected contract from options: {selected_contract}"
-            )
             self.update_current_sensor(selected_contract)
 
         if self._current_sensor_id:
@@ -317,7 +314,6 @@ class CurrentContractSensor(SensorEntity):
         """Handle updates to the options, such as contract changes."""
         selected_contract = self._entry.options.get("selected_contract_id")
         if selected_contract:
-            _LOGGER.info(f"Selected contract updated to: {selected_contract}")
             self.update_current_sensor(selected_contract)
 
 
@@ -338,7 +334,6 @@ class CurrentContractSensorState(SensorEntity):
         self._unique_id = f"{DOMAIN}_current_contract_{self._to_track}"
         self._remove_listener = None
         self._tracked_entity_id = "sensor.sec_current_contract_sensor"
-        _LOGGER.info(f"Initialized CurrentContractSensorState for {self._to_track}")
 
     @property
     def name(self):
@@ -374,9 +369,6 @@ class CurrentContractSensorState(SensorEntity):
                     else:
                         _LOGGER.error(f"Invalid tracking option: {self._to_track}")
 
-                    _LOGGER.info(
-                        f"Mirrored sensor {self._name} state updated: {self._state}"
-                    )
                     self.async_write_ha_state()
 
             except (SyntaxError, TypeError) as e:
@@ -429,14 +421,12 @@ class CurrentContractSensorState(SensorEntity):
         """Handle updates to the options when the contract changes."""
         selected_contract = self._entry.options.get("selected_contract_id")
         if selected_contract:
-            _LOGGER.info(f"Selected contract updated to: {selected_contract}")
             self.update_tracked_sensor(selected_contract)
 
     @callback
     def update_tracked_sensor(self, sensor_id):
         """Update the sensor to track the new contract."""
         self._tracked_entity_id = f"sensor.{sensor_id}"
-        _LOGGER.info(f"Tracking new contract entity: {self._tracked_entity_id}")
 
         state = self._hass.states.get(self._tracked_entity_id)
         if state:
@@ -465,15 +455,14 @@ class CurrentContractSensorState(SensorEntity):
 
 
 class ConstValuesSensor(SensorEntity):
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, api: MyApi) -> None:
         self._name = "sec_constant_values"
         self._state = 0
         self._hass = hass
-        self._attributes = {}
         self._unique_id = f"{DOMAIN}_constant_values"
         self._entry = entry
-
-        self.format_attributes()
+        self._api = api
+        self._attributes = {}
 
     @property
     def unique_id(self):
@@ -495,11 +484,12 @@ class ConstValuesSensor(SensorEntity):
         """Return extra attributes."""
         return self._attributes
 
-    def format_attributes(self):
-        """Set constant attributes."""
-        self._attributes["bijz_accijns"] = BIJZ_ACCIJNS
-        self._attributes["bijdrage_energie"] = BIJDRAGE_ENERGIE
-        self._attributes["aansluitingsvergoeding"] = AANSLUITINGSVERGOEDING
-        self._attributes["gsc"] = GSC
-        self._attributes["wkk"] = WKK
-        self._attributes["region"] = self._entry.data.get("zip_code")
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        await self._update_constants()
+
+    async def _update_constants(self):
+        """Fetch constants from the API and update attributes."""
+        zip_code = self._entry.data.get("zip_code")
+        self._attributes = await self._api.get_constants(zip_code)
+        self.async_write_ha_state()
