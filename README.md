@@ -26,7 +26,7 @@ Search for "Smartenergycontrol" and add the HACS integrations. Restart Home Assi
 
 You can choose your current contract en energy distributer trough postal code using the web UI. 
 
-The integration will ask for your postal code (all Belgian postcodes supported) and an API key (contat us if you want access).
+The integration will ask for your postal code (all Belgian postcodes supported) and an API key ([contact me](mailto:steven@smartenergycontrol.be) if you want access).
 The integration will get up-to-date distribution tarifs for Belgium (taxes, accijnzen, groene stoom WWK, capaciteits tarief etc) depending on where you live. You will be able to add all the existing Enegy contracts (fixed, flible and dynamic) that exist in the V-test from VREG (updated monthly). Add your contract, select it as current, and select a nummber of other contracts from te list to compare.
 See your real daily electricity cost with your existing contract and compare with other contracts or formulas out there.
 
