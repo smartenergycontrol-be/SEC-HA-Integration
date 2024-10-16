@@ -73,7 +73,7 @@ class ExampleOptionsFlow(config_entries.OptionsFlow):
                         "Remove contract",
                         "Set current contract",
                         "Update API key",
-                        "Update Zip code",
+                        # "Update Zip code",
                     ]
                 ),
             }
